@@ -80,18 +80,33 @@ def show_progress(models: List[PatternModel], formatter: BaseFormatter) -> str:
     return output_content
 
 def show_data_summary(data: List[List[float]]) -> None:
+    if not data: return
+    
+    num_features = len(data[0]) - 1
     table = Table(title="Dataset Preview", border_style="blue", header_style="bold magenta")
     table.add_column("Index", justify="right", style="cyan")
-    table.add_column("X1 (Feature)", justify="right")
-    table.add_column("X2 (Feature)", justify="right")
+    
+    for j in range(num_features):
+        table.add_column(f"X{j+1}", justify="right")
+        
     table.add_column("Class", justify="center")
 
     for i, row in enumerate(data[:10]): 
-        cls_style = "green" if row[2] == 1.0 else "red"
-        cls_name = "POSITIVE" if row[2] == 1.0 else "NEGATIVE"
-        table.add_row(str(i), f"{row[0]:.2f}", f"{row[1]:.2f}", f"[{cls_style}]{cls_name}[/]")
+        cls_val = row[-1]
+        cls_style = "green" if cls_val == 1.0 else "red"
+        cls_name = "POSITIVE" if cls_val == 1.0 else "NEGATIVE"
+        
+        row_data = [str(i)]
+        for j in range(num_features):
+            row_data.append(f"{row[j]:.2f}")
+        row_data.append(f"[{cls_style}]{cls_name}[/]")
+        
+        table.add_row(*row_data)
     
-    if len(data) > 10: table.add_row("...", "...", "...", "...")
+    if len(data) > 10: 
+        footer = ["..."] * (num_features + 2)
+        table.add_row(*footer)
+        
     console.print(table)
     console.print(f"Total objects processed: [bold green]{len(data)}[/bold green]")
 
@@ -113,7 +128,13 @@ def run() -> None:
             console.print(f"[error]Error loading data: {e}[/]")
             return
     else:
-        data = data_manager.generate_synthetic_data()
+        n_features_str = questionary.text(
+            "How many attributes (columns) should each object have?",
+            default="2",
+            validate=lambda val: val.isdigit() and int(val) > 0 or "Please enter a positive number"
+        ).ask()
+        if not n_features_str: return
+        data = data_manager.generate_synthetic_data(n_features=int(n_features_str))
     
     show_data_summary(data)
     models = generator.generate_models(data)
