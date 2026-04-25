@@ -28,13 +28,13 @@ class PatternModel:
         self.data = data
 
 def generate_models(data: List[List[float]]) -> List[PatternModel]:
-    pos_indices: List[int] = [i for i, row in enumerate(data) if row[2] == 1]
-    neg_indices: List[int] = [i for i, row in enumerate(data) if row[2] == 0]
+    pos_indices: List[int] = [i for i, row in enumerate(data) if row[-1] == 1]
+    neg_indices: List[int] = [i for i, row in enumerate(data) if row[-1] == 0]
     
     models: List[PatternModel] = []
     for i in range(len(data)):
         alpha_obj = data[i]
-        is_pos = alpha_obj[2] == 1
+        is_pos = alpha_obj[-1] == 1
         target = pos_indices if is_pos else neg_indices
         opposite = neg_indices if is_pos else pos_indices
         models.append(PatternModel(i, alpha_obj, is_pos, target, opposite, data))
