@@ -1,6 +1,6 @@
-# 🎯 Pattern Discovery Optimization Model Generator
+# 🎯 ALDO: Alpha-object Logical Discovery & Optimization
 
-Welcome to the **Pattern Discovery Optimization Model Generator**! This tool is designed for academic and research purposes, specifically focusing on the **Alpha-Object approach** for finding maximal logical regularities.
+Welcome to **ALDO**! This tool is designed for academic and research purposes, specifically focusing on the **Alpha-Object approach** for finding maximal logical regularities.
 
 [![Python Version](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -28,8 +28,8 @@ This application helps researchers and students formulate mathematical optimizat
 
 1.  **Clone the repository:**
     ```bash
-    git clone https://github.com/your-repo/lab-3.git
-    cd lab-3
+    git clone https://github.com/XL1TTE/ALDO-Alpha-object-Logical-Discovery-Optimization.git
+    cd ALDO-Alpha-object-Logical-Discovery-Optimization
     ```
 
 2.  **Set up a virtual environment:**
