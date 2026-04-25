@@ -1,11 +1,29 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, List
 from .base import BaseFormatter
 
 if TYPE_CHECKING:
     from ..generator import PatternModel
 
 class MarkdownFormatter(BaseFormatter):
+    def _format_point_terms(self, row_data: List[float], num_features: int) -> str:
+        """Splits the feature conjunctions into multiple lines if they are too long."""
+        parts = [f"{row_data[j]:.2f} \\in [a_{{{j+1}}}, b_{{{j+1}}}]" for j in range(num_features)]
+        if num_features <= 3:
+            return " \\land ".join(parts)
+        
+        # Split into chunks of 3 features per line
+        chunks = []
+        for k in range(0, len(parts), 3):
+            chunk = " \\land ".join(parts[k:k+3])
+            if k + 3 < len(parts):
+                chunk += " \\land \\\\"
+            chunks.append(chunk)
+            
+        # Wrap in a nested aligned to allow internal line breaks with \left( \right)
+        inner = "\n".join(chunks)
+        return f"\\begin{{aligned}} {inner} \\end{{aligned}}"
+
     def format(self, model: PatternModel) -> str:
         class_label = "Positive" if model.is_positive else "Negative"
         num_features = len(model.alpha_obj) - 1
@@ -19,33 +37,49 @@ class MarkdownFormatter(BaseFormatter):
         md += "|:---:|:---:|:---:|\n"
         for j in range(num_features):
             val = model.alpha_obj[j]
-            md += f"| X{j+1} | {val:.2f} | $a_{j+1} \\le {val:.2f} \\le b_{j+1}$ |\n"
+            md += f"| X{j+1} | {val:.2f} | $a_{{{j+1}}} \\le {val:.2f} \\le b_{{{j+1}}}$ |\n"
         md += "\n"
         
         # 2. Objective in LaTeX
         md += "### Objective Function\n"
         md += "Maximize the total coverage of the target class $S^\\pm$:\n\n"
-        
-        feature_terms_latex = " \\land ".join([f"x_{{i{j+1}}} \\in [a_{j+1}, b_{j+1}]" for j in range(num_features)])
-        md += f"$$\\max Z = \\sum_{{i \\in S^\\pm}} \\mathbb{{I}}({feature_terms_latex})$$\n\n"
-        
+
+        # Prepare multi-line generic feature terms for headers
+        generic_terms_multi = self._format_point_terms([0.0]*num_features, num_features)
+        for j in range(num_features):
+            generic_terms_multi = generic_terms_multi.replace(f"0.00 \\in [a_{{{j+1}}}, b_{{{j+1}}}]", f"x_{{i,{{{j+1}}}}} \\in [a_{{{j+1}}}, b_{{{j+1}}}]")
+
+        md += f"$$\\max Z = \\sum_{{i \\in S^\\pm}} \\mathbb{{I}}\\left( {generic_terms_multi} \\right)$$\n\n"
+
         md += "Explicit objective for the current dataset:\n"
         terms = []
         for i in model.target_set:
-            point_terms = " \\land ".join([f"{model.data[i][j]:.2f} \\in [a_{j+1}, b_{j+1}]" for j in range(num_features)])
-            terms.append(f"\\mathbb{{I}}({point_terms})")
-        
-        md += "$$Z = " + " + ".join(terms) + "$$\n\n"
-        
+            p_terms = self._format_point_terms(model.data[i], num_features)
+            terms.append(f"\\mathbb{{I}}\\left( {p_terms} \\right)")
+
+        # Format Z with one object indicator per line to handle width
+        lines = []
+        for i, term in enumerate(terms):
+            line = term
+            if i < len(terms) - 1:
+                line += " +"
+            lines.append(line)
+
+        md += "$$\\begin{aligned} Z = & " + " \\\\ \n& ".join(lines) + "\\end{aligned}$$\n\n"
+
         # 3. Constraints in LaTeX
         md += "### Negative Constraints\n"
         md += "Ensure that no objects from the opposite class $S^\\mp$ are covered by the pattern:\n\n"
-        md += f"$$\\forall i \\in S^\\mp, \\quad \\mathbb{{I}}({feature_terms_latex}) = 0$$\n\n"
-        
+
+        md += f"$$\\forall i \\in S^\\mp, \\quad \\mathbb{{I}}\\left( {generic_terms_multi} \\right) = 0$$\n\n"
+
         md += "System of equations for negative objects:\n"
+        neg_lines = []
         for i in model.opposite_set:
-            point_terms = " \\land ".join([f"{model.data[i][j]:.2f} \\in [a_{j+1}, b_{j+1}]" for j in range(num_features)])
-            md += f"- $$\\mathbb{{I}}({point_terms}) = 0$$\n"
+            p_terms = self._format_point_terms(model.data[i], num_features)
+            neg_lines.append(f"\\mathbb{{I}}\\left( {p_terms} \\right) = 0")
+        
+        md += "$$\\begin{aligned}\n& " + " \\\\ \n& ".join(neg_lines) + "\n\\end{aligned}$$\n\n"
         
         return md
 
